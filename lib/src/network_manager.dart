@@ -104,14 +104,15 @@ class NetworkManager with DioMixin implements Dio, INetworkManager {
 
     _addLoggerInterceptor(isEnableLogger ?? false);
     _addNetworkIntercaptors(interceptor);
-
+    httpClientAdapter = adapter.createAdapter();
     if (securityContext != null) {
-      (httpClientAdapter as DefaultHttpClientAdapter).onHttpClientCreate =
-          (client) {
-        return HttpClient(context: securityContext);
+      var a = httpClientAdapter as DefaultHttpClientAdapter;
+      a.onHttpClientCreate = (client) {
+        return HttpClient(context: securityContext)
+          ..badCertificateCallback =
+              (X509Certificate cert, String host, int port) => true;
       };
     }
-    httpClientAdapter = adapter.createAdapter();
   }
 
   void _addLoggerInterceptor(bool isEnableLogger) {
