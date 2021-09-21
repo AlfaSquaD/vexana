@@ -15,7 +15,8 @@ import 'package:dio/adapter.dart';
 import 'package:dio/dio.dart';
 import 'package:dio/native_imp.dart';
 
-import 'package:dio/src/adapters/io_adapter.dart' if (dart.library.html) 'package:dio/src/adapters/browser_adapter.dart'
+import 'package:dio/src/adapters/io_adapter.dart'
+    if (dart.library.html) 'package:dio/src/adapters/browser_adapter.dart'
     as adapter;
 
 // import 'package:dio/src/adapter.dart'
@@ -55,7 +56,8 @@ class NetworkManager with DioMixin implements Dio, INetworkManager {
   /// [Future<DioError> Function(DioError error, NetworkManager newService)] of retry service request with new instance
   ///
   /// Default value function is null until to define your business.
-  late Future<DioError> Function(DioError error, NetworkManager newService)? onRefreshToken;
+  late Future<DioError> Function(DioError error, NetworkManager newService)?
+      onRefreshToken;
 
   /// [VoidCallback?] has send error if it has [onRefreshToken] callback after has problem.
   ///
@@ -96,11 +98,19 @@ class NetworkManager with DioMixin implements Dio, INetworkManager {
     this.fileManager,
     this.errorModel,
     this.isEnableTest = false,
+    SecurityContext? securityContext,
   }) {
     this.options = options;
 
     _addLoggerInterceptor(isEnableLogger ?? false);
     _addNetworkIntercaptors(interceptor);
+
+    if (securityContext != null) {
+      (httpClientAdapter as DefaultHttpClientAdapter).onHttpClientCreate =
+          (client) {
+        return HttpClient(context: securityContext);
+      };
+    }
     httpClientAdapter = adapter.createAdapter();
   }
 
@@ -165,12 +175,15 @@ class NetworkManager with DioMixin implements Dio, INetworkManager {
     final body = _getBodyModel(data);
 
     try {
-      final response = await request('$path$urlSuffix', data: body, options: options, queryParameters: queryParameters);
-      if (response.statusCode! >= HttpStatus.ok && response.statusCode! <= HttpStatus.multipleChoices) {
+      final response = await request('$path$urlSuffix',
+          data: body, options: options, queryParameters: queryParameters);
+      if (response.statusCode! >= HttpStatus.ok &&
+          response.statusCode! <= HttpStatus.multipleChoices) {
         await writeCacheAll(expiration, response.data, method);
         return _getResponseResult<T, R>(response.data, parseModel);
       } else {
-        return ResponseModel(error: ErrorModel(description: response.data.toString()));
+        return ResponseModel(
+            error: ErrorModel(description: response.data.toString()));
       }
     } on DioError catch (e) {
       return _onError<R>(e);
@@ -178,9 +191,12 @@ class NetworkManager with DioMixin implements Dio, INetworkManager {
   }
 
   @override
-  Future<Response<Uint8List>> downloadFileSimple(String path, ProgressCallback? callback) async {
+  Future<Response<Uint8List>> downloadFileSimple(
+      String path, ProgressCallback? callback) async {
     final response = await Dio().get<Uint8List>(path,
-        options: Options(followRedirects: false, responseType: ResponseType.bytes), onReceiveProgress: callback);
+        options:
+            Options(followRedirects: false, responseType: ResponseType.bytes),
+        onReceiveProgress: callback);
 
     return response;
   }
@@ -194,11 +210,13 @@ class NetworkManager with DioMixin implements Dio, INetworkManager {
     if (cacheDataString == null) {
       return null;
     } else {
-      return _getResponseResult<T, R>(jsonDecode(cacheDataString), responseModel);
+      return _getResponseResult<T, R>(
+          jsonDecode(cacheDataString), responseModel);
     }
   }
 
-  ResponseModel<R> _getResponseResult<T extends INetworkModel, R>(dynamic data, T parserModel) {
+  ResponseModel<R> _getResponseResult<T extends INetworkModel, R>(
+      dynamic data, T parserModel) {
     final model = _parseBody<R, T>(data, parserModel);
     return ResponseModel<R>(data: model);
   }
@@ -208,7 +226,9 @@ class NetworkManager with DioMixin implements Dio, INetworkManager {
     _printErrorMessage(e.message);
     final error = ErrorModel(
         description: e.message,
-        statusCode: errorResponse != null ? errorResponse.statusCode : HttpStatus.internalServerError);
+        statusCode: errorResponse != null
+            ? errorResponse.statusCode
+            : HttpStatus.internalServerError);
     if (errorResponse != null) {
       _generateErrorModel(error, errorResponse.data);
     }
